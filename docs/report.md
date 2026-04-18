@@ -9,12 +9,15 @@ What makes this project interesting is that it does not stop at the cipher itsel
 	A brute-force attacker that tests all possible keys 
 	A second attack method for ciphertexts that do not include authentication 
 This combination makes the project more realistic, because it shows both sides:
+
 how encryption is built, and how it can be attacked.
 The supplied project brief asks for more than a basic description of S-AES. It combines the core cipher with a practical implementation story: a Python S-AES module, a CCM-style wrapper for authenticated encryption, a brute-force attacker for internal testing, and a second attack path for CTR-style ciphertexts received from other groups. In other words, the report has to explain both the cipher itself and the logic of attacking it in a realistic classroom setting. fileciteturn1file0
 S-AES exists for teaching. Musa, Schaefer, and Wedig introduced it as a drastically reduced version of AES so that students could work through the algorithm by hand without losing the main ideas of the real cipher. Holden’s teaching notes make the same point in simpler terms: S-AES keeps the AES structure, but reduces the block size to 16 bits, the key size to 16 bits, and the round count to 2. By contrast, standardized AES uses a 128-bit block and 128-, 192-, or 256-bit keys. (Musa 2003; Holden; NIST FIPS 197). [1]
 That difference in scale completely changes the security picture. In real AES, exhaustive search is not practical. In S-AES, the entire keyspace is only 2^16=65,536 keys, so brute force is not a fallback attack; it is the obvious baseline attack. The project’s cryptanalysis section is therefore well aimed: the important question is not whether S-AES can be broken, but how the implementation details of the surrounding mode of operation help an attacker test candidate keys more efficiently. (Holden; NIST SP 800-38A; NIST SP 800-38C). [2]
 The report below does two things. First, it explains the S-AES core clearly: state layout, round flow, SubNib, ShiftRows, MixColumns, and key expansion. Second, it analyzes the project’s four-stage workflow: methodology and threat model, CCM-style wrapping, self-cryptanalysis with a known internal key, and a separate heuristic attack path for external CTR ciphertexts. The main analytical conclusion is straightforward: the project is strongest when it presents S-AES honestly as an instructional cipher and the CCM/CTR code as an educational wrapper around a deliberately weak primitive, not as a secure modern design. (Holden; Musa 2003; NIST SP 800-38A; NIST SP 800-38C). [3]
+
 S-AES in context
+
 S-AES should be understood as a miniature version of AES, not as an unrelated toy. The same broad structure is preserved: a plaintext block is placed into a state array, transformed by substitution and permutation layers, mixed linearly, and combined with round keys. Musa’s original paper emphasizes that the design goal was to shrink AES “as much as possible without losing the essence of the algorithm,” and Holden’s classroom notes state the same point more directly: structurally, S-AES is “exactly the same as AES,” but with much smaller parameters. (Musa 2003; Holden). [4]
 That is why the term simplified matters. It does not mean “careless” or “roughly inspired by AES.” It means that the educational version retains the four ideas that matter most in AES-style block ciphers: nonlinearity from the S-box, diffusion from row shifting and column mixing, round-key injection, and a separate key schedule that expands a short master key into round keys. In a classroom or project report, this matters because it lets the writer explain genuine AES-style design logic in a manageable setting. (Musa 2003; Holden). [4]
 A direct comparison makes the scaling clear:
@@ -50,6 +53,7 @@ flowchart TD
     SN2 --> SR2[ShiftRows]
     SR2 --> AK2[AddRoundKey K2]
     AK2 --> C[Ciphertext 16-bit]
+	
 This diagram matches the textbook S-AES flow described in the educational sources. (Holden; Sandilands). [10]
 The ShiftRows mapping is especially easy to state in a report because there are only four nibbles. In linear nibble order, the row shift can be written as:
 SR(N_0 N_1 N_2 N_3 )=N_0 N_3 N_2 N_1
@@ -69,6 +73,7 @@ Input	0	1	2	3
 1	D	1	8	5
 2	6	2	0	3
 3	C	E	F	7
+
 Read row and column as a compact arrangement of inputs 0 through F. In simple mapping form, for example, 0↦9, 1↦4, A↦0, and F↦7. This table is the same as the published S-AES lookup table in Holden’s notes and the teaching literature built around Musa’s design. (Holden). [15]
 The inverse S-box is just the reverse mapping. Since the forward S-box is a permutation of the 16 nibble values, decryption can undo the substitution by swapping inputs and outputs. The inverse table in hexadecimal is therefore:
 Input	0	1	2	3
@@ -80,13 +85,16 @@ This inverse table is obtained by reversing the published forward S-box mapping.
 A small lookup example is enough to show how SubNib works in practice. From the S-box table, S(A)=0, S(D)=E, S(1)=4, and S(F)=7. So if a state contains the nibble sequence A,D,1,F, the SubNib output contains 0,E,4,7 in the same positions. The value changes happen first; movement happens later in ShiftRows. (Holden; Sandilands). [16]
 It is also important to separate two uses of the phrase SubNib in a project report. In the encryption round, SubNib acts on the full 16-bit state, nibble by nibble. In the key schedule, SubNib acts on an 8-bit word after RotNib, which means it substitutes two nibbles inside a byte-sized word rather than the whole state. Sandilands states this explicitly in the worked key schedule: SubNib in key expansion means “apply S-box substitution on nibbles using encryption S-box.” (Sandilands). [17]
 That distinction matters in code. If the implementation confuses state-level substitution with key-schedule substitution, the round keys will be wrong even if the round function itself is correct. For a report intended to accompany code, this is worth stating clearly because it shows that the writer understands both the algorithm and the implementation boundary between the round function and the key expansion logic. (Sandilands; Holden). [18]
+
 Key expansion and round keys
+
 S-AES starts from a 16-bit master key and expands it into three 16-bit round keys: K_0, K_1, and K_2. The teaching notes usually do this by splitting the input key into two 8-bit words, w_0 and w_1, and then generating four more words w_2,w_3,w_4,w_5. Sandilands presents this in exactly the form most programming assignments use. (Sandilands). [19]
 The initial split is simple:
 w_0="left byte of the 16-bit key",  w_1="right byte of the 16-bit key" 
 The first round key is just the original key written as the two initial words:
 K_0=w_0∥w_1
 After that, the remaining words are generated by XORing prior words with a transformed version of the previous word and a round constant. (Sandilands). [19]
+
 The two helper functions are:
 RotNib(N_0 N_1 )=N_1 N_0
 which swaps the two nibbles in an 8-bit word, and
@@ -157,6 +165,7 @@ Encrypt(P, K):
     state = state XOR K2
 
     return state
+
 The logic here matches the standard S-AES flow: initial AddRoundKey, one full round, and a final round without MixColumns. (Holden; Sandilands). [8]
 Protocol application and cryptanalysis strategy
 The project brief divides the implementation into four practical stages: a methodology and attack model, a CCM-style protocol wrapper around the S-AES core, self-cryptanalysis using a known internal test key, and a separate attack strategy for external CTR ciphertexts. It also closes with engineering deliverables: modular code, comments, a README, and no external packages. That overall shape is sound for a classroom cryptography project because it shows not only how the cipher works, but how the cipher behaves once embedded in a protocol and then attacked. fileciteturn1file0
@@ -164,7 +173,8 @@ The first stage, the threat model, is the easiest to justify analytically. Once 
 The block size matters almost as much as the key size. NIST’s CTR recommendation requires every counter block under a given key to be unique, and it warns that reusing a counter block can compromise confidentiality immediately. In real AES, 128-bit counters make that manageable. In S-AES, the full block is only 16 bits, so the space of distinct counter blocks is tiny by modern standards. Even before brute force is considered, that makes any CTR-style construction fragile for large volumes of data or poor nonce management. (NIST SP 800-38A; Holden). [23]
 The second stage in the brief is the protocol wrapper. This idea is sensible. A raw block cipher should not be used directly on files; it needs a mode of operation to handle arbitrary-length input, and it often needs an authentication layer as well. NIST SP 800-38A defines CTR mode as encrypting counters with the forward block cipher and XORing the resulting keystream with plaintext or ciphertext. NIST SP 800-38C defines CCM as a combined authenticated-encryption mode built from CTR for confidentiality and CBC-MAC for authenticity. (NIST SP 800-38A; NIST SP 800-38C). [24]
 That said, the report should be precise about terminology. Standard NIST CCM is specified for block ciphers with a 128-bit block size, such as AES, and the NIST text says directly that CCM is based on an approved block cipher “whose block size is 128 bits.” So if the project adapts the CCM logic to a 16-bit S-AES core, that implementation should be described as a CCM-style educational adaptation, not as standards-compliant CCM proper. This does not weaken the project; it actually makes the write-up more accurate. (NIST SP 800-38C). [25]
-The brief’s “verification protocol” is also easy to place in formal terms. NIST’s CCM specification says that decryption-verification checks the MAC and returns either the recovered payload or the error message INVALID; when verification fails, the payload is not returned. That means a guessed key can be tested very efficiently: decrypt under the candidate key, recompute or verify the tag, and reject the key immediately if the tag check fails. In the project notes, this idea is labeled “Authentication Bypass (CCM),” but analytically that label is misleading. It is not an authentication bypass; it is better described as tag-assisted key testing during exhaustive search. (NIST SP 800-38C; project brief). [26] fileciteturn1file0
+The brief’s “verification protocol” is also easy to place in formal terms. NIST’s CCM specification says that decryption-verification checks the MAC and returns either the recovered payload or the error message INVALID; when verification fails, the payload is not returned. That means a guessed key can be tested very efficiently: decrypt under the candidate key, recompute or verify the tag, and reject the key immediately if the tag check fails. In the project notes, this idea is labeled “Authentication Bypass (CCM),” but analytically that label is misleading. It is not an authentication bypass; it is better described as tag-assisted key testing during exhaustive search. (NIST SP 800-38C; project brief). [26] fileciteturn1file
+
 NIST also gives a useful caution here. The CCM document states that the probability a single inauthentic ciphertext passes verification is no greater than 1/2^Tlen, where Tlen is the tag length, and it recommends limiting repeated INVALID trials in a deployment. In real systems, this is a warning about forgery probability and protocol abuse. In the toy S-AES setting, it is a reminder that MAC-based rejection is a powerful filter, but the overall security ceiling is still dominated by the tiny keyspace. (NIST SP 800-38C). [27]
 The project’s self-cryptanalysis stage follows this logic closely. The brief says the internal test harness encrypts using key 0xABCD, then runs an attacker script that checks all 65,536 keys. That experiment makes sense. For a 16-bit cipher, a complete search is expected, and a correct implementation should recover the original key or plaintext once the search reaches the right candidate. When a CCM-style tag is present, most wrong keys are filtered immediately by verification failure. fileciteturn1file0
 The more interesting part of the brief is the second attack path: ciphertexts that come from other groups in CTR mode without a MAC. This is where the “frequency print heuristic” enters. In that case, there is no authentication tag to act as a decisive oracle, so the attacker has to rank trial decryptions using structure in the plaintext: printable-text ratio, known headers, file signatures, or any other recognizable formatting. That is a reasonable classroom approach, especially if the likely plaintexts are text-heavy. But the report should present it carefully: printable-text scoring is a heuristic, not a proof of correctness. It works best when the underlying message format is strongly constrained. (Project brief; NIST SP 800-38A). fileciteturn1file0 [28]
