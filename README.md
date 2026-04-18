@@ -15,13 +15,13 @@ It handles arbitrary payloads (text, images) up to realistically testable sizes.
 ### 1. Encryption (`main.py`)
 Encrypt any file (text, image, etc.) natively.
 ```bash
-python main.py encrypt -i test_msg.txt -o output.enc -k 0xABCD
+python main.py encrypt -i test_msg.txt -o out.enc -k 0xABCD
 ```
 
 ### 2. Decryption (`main.py`)
 Decrypt verified ciphertexts seamlessly. Note that our CCM engine verifies integrity—any tampering with bits or an incorrect key halts decryption execution instantly.
 ```bash
-python main.py decrypt -i output.enc -o decrypted.txt -k 0xABCD
+python main.py decrypt -i out.enc -o test_msg_dec.txt -k 0xABCD
 ```
 
 ### 3. Cryptanalysis / Brute-Force (`attacker.py`)
@@ -29,12 +29,12 @@ Due to the deliberately limited key space (2^16), we can traverse all 65536 iter
 
 The attacker defaults to CCM-MAC validation. Passing candidates are printed.
 ```bash
-python attacker.py -i output.enc 
+python attacker.py -i out.enc
 ```
 
 To limit false positives intelligently, append the `--ascii` flag. It tests whether decoded outputs match the high ratio of standard english printable text.
 ```bash
-python attacker.py -i output.enc --ascii
+python attacker.py -i out.enc --ascii
 ```
 
 ### 4. External Group Ciphertext Recovery (Standard CTR mode)
