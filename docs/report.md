@@ -1,5 +1,7 @@
 Simplified AES and the Project Cryptanalysis Workflow
+
 Introduction
+
 This project focuses on understanding how a simplified block cipher works in practice, not just at a theoretical level. Instead of only describing S-AES, the goal was to actually implement it from scratch, test it, and then try to break it using realistic attack methods.
 What makes this project interesting is that it does not stop at the cipher itself. It also includes:
 	A working Python implementation of S-AES 
