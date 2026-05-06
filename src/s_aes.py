@@ -1,8 +1,3 @@
-"""
-Simplified AES (S-AES) implementation from scratch.
-Works on 16-bit blocks and uses a 16-bit key.
-"""
-
 # S-Box for substitution
 SBOX = [
     [0x9, 0x4, 0xA, 0xB],
