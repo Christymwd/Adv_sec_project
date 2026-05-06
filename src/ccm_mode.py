@@ -1,13 +1,3 @@
-"""
-Simplified CCM Mode (Counter with CBC-MAC) adapted for S-AES (16-bit block size).
-Since S-AES only has 2-byte blocks, standard CCM formatting (NIST) is impossible.
-This module uses a simplified approach:
-1. Calculates CBC-MAC over the zero-padded message.
-2. Encrypts the MAC with CTR mode at counter=0.
-3. Encrypts the message with CTR mode starting at counter=1.
-Output format: [2-byte Encrypted MAC] + [Encrypted Message bytes]
-"""
-
 from .s_aes import encrypt as s_aes_encrypt
 
 def xor_bytes(b1, b2):
