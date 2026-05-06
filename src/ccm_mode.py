@@ -4,10 +4,6 @@ def xor_bytes(b1, b2):
     return bytes(x ^ y for x, y in zip(b1, b2))
 
 def cbc_mac(data, key):
-    """
-    Computes a 16-bit CBC-MAC for the given byte data using S-AES.
-    Pads the data with zeros if its length is not a multiple of 2 bytes.
-    """
     if len(data) % 2 != 0:
         data = data + b'\x00'
 
@@ -20,11 +16,6 @@ def cbc_mac(data, key):
     return mac.to_bytes(2, byteorder='big')
 
 def ctr_crypt(data, key, start_counter=1):
-    """
-    Encrypts or decrypts data using CTR mode.
-    Since it's a stream cipher, data length doesn't need padding.
-    Counter wraps around at 65536 (16-bit limit).
-    """
     counter = start_counter
     result = bytearray()
     
@@ -45,10 +36,6 @@ def ctr_crypt(data, key, start_counter=1):
     return bytes(result)
 
 def ccm_encrypt(plaintext_bytes, key_16bit):
-    """
-    Encrypts plaintext bytes using Simplified CCM mode and S-AES.
-    Returns: Encrypted MAC (2 bytes) + Ciphertext
-    """
     # 1. Compute CBC-MAC on plaintext
     raw_mac = cbc_mac(plaintext_bytes, key_16bit)
     
@@ -61,11 +48,6 @@ def ccm_encrypt(plaintext_bytes, key_16bit):
     return encrypted_mac + ciphertext
 
 def ccm_decrypt(ciphertext_data, key_16bit):
-    """
-    Decrypts CCM-encrypted data and verifies the MAC.
-    Raises ValueError if MAC authentication fails.
-    Returns: Plaintext bytes
-    """
     if len(ciphertext_data) < 2:
         raise ValueError("Ciphertext too short (must contain at least a 2-byte MAC)")
 
